@@ -8,7 +8,7 @@ MCP는 Backend 내부 API를 통해서만 컨텍스트와 도구를 제공합니
 
 | 서비스 | 역할 | 호스트 공개 여부 |
 | --- | --- | --- |
-| `postgresql` | 게임 데이터 원본 저장소 | 공개하지 않음 |
+| `postgresql` | `pgvector` 확장을 포함한 게임 데이터 원본 저장소 | 공개하지 않음 |
 | `redis` | cache, lock, event stream 보조 계층 | 공개하지 않음 |
 | `database_schema` | Backend migration 실행 후 종료 | 공개하지 않음 |
 | `backend` | 공개 게임 API와 게임 진행 | `18000` |
@@ -40,6 +40,7 @@ MCP는 Backend 내부 API를 통해서만 컨텍스트와 도구를 제공합니
 
 초기 기동에서는 `database_schema`가 migration을 완료한 뒤 Backend가 시작됩니다.
 PostgreSQL과 Redis 데이터는 Docker named volume에 보존됩니다.
+PostgreSQL 이미지는 migration의 `vector` 확장을 제공하는 `pgvector/pgvector:pg16`입니다.
 
 ## Release 실행
 

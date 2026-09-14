@@ -4,7 +4,9 @@ name: ai-mafia
 
 services:
   postgresql:
-    image: postgres:16-alpine
+    # 005 migration이 사용하는 vector 확장을 제공하는 PostgreSQL 16 이미지다.
+    # 일반 postgres:16-alpine에는 pgvector가 없어 schema migration이 중단된다.
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
