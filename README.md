@@ -14,7 +14,6 @@ MCP는 Backend 내부 API를 통해서만 컨텍스트와 도구를 제공합니
 | `backend` | 공개 게임 API와 게임 진행 | `18000` |
 | `frontend` | Streamlit 사용자 화면 | `18501` |
 | `mcp_server1` | Backend가 사용하는 FastMCP runtime | `18100` |
-| `mcp_server2` | 현재 단일 MCP URL 계약의 대기 인스턴스 | 공개하지 않음 |
 
 ## 시작하기
 

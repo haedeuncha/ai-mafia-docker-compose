@@ -81,6 +81,8 @@ services:
     environment:
       # 브라우저 SSE도 Backend에 닿도록 Docker Desktop의 host gateway를 사용한다.
       BACKEND_API_URL: http://host.docker.internal:${BACKEND_PORT}
+      # Streamlit component의 fetch는 사용자 브라우저에서 실행되므로 host loopback을 쓴다.
+      BROWSER_BACKEND_API_URL: http://127.0.0.1:${BACKEND_PORT}
     extra_hosts:
       - host.docker.internal:host-gateway
     depends_on:
@@ -103,19 +105,6 @@ services:
         condition: service_healthy
     ports:
       - "${MCP_PORT}:8100"
-    networks: [ai_mafia_internal]
-
-  mcp_server2:
-    build:
-      context: .
-      dockerfile: Dockerfile.mcp
-    environment:
-      BACKEND_API_URL: http://backend:8000
-      MCP_LISTEN_HOST: 0.0.0.0
-      MCP_LISTEN_PORT: "8100"
-    depends_on:
-      backend:
-        condition: service_healthy
     networks: [ai_mafia_internal]
 
 volumes:

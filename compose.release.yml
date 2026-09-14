@@ -9,6 +9,3 @@ services:
 
   mcp_server1:
     restart: unless-stopped
-
-  mcp_server2:
-    restart: unless-stopped
