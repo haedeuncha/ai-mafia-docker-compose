@@ -1,0 +1,127 @@
+# 개발용 단일 호스트 구성이다. 호스트에는 기존 통합 실행 포트만 공개하며,
+# DB·Redis·보조 MCP는 ai_mafia_internal 네트워크 안에서만 통신한다.
+name: ai-mafia
+
+services:
+  postgresql:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [ai_mafia_internal]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [ai_mafia_internal]
+
+  database_schema:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command: ["python", "-m", "backend.app.infrastructure.migrations"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgresql:5432/${POSTGRES_DB}
+      DATABASE_MIGRATION_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgresql:5432/${POSTGRES_DB}
+      DATABASE_NAME: ${POSTGRES_DB}
+      TEAM_DATABASE_URL: ""
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    restart: "no"
+    networks: [ai_mafia_internal]
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgresql:5432/${POSTGRES_DB}
+      DATABASE_NAME: ${POSTGRES_DB}
+      TEAM_DATABASE_URL: ""
+      REDIS_URL: redis://redis:6379/0
+      MCP_SERVER_URL: http://mcp_server1:8100
+    depends_on:
+      database_schema:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [ai_mafia_internal]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    environment:
+      # 브라우저 SSE도 Backend에 닿도록 Docker Desktop의 host gateway를 사용한다.
+      BACKEND_API_URL: http://host.docker.internal:${BACKEND_PORT}
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT}:8501"
+    networks: [ai_mafia_internal]
+
+  mcp_server1:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    environment:
+      BACKEND_API_URL: http://backend:8000
+      MCP_LISTEN_HOST: 0.0.0.0
+      MCP_LISTEN_PORT: "8100"
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${MCP_PORT}:8100"
+    networks: [ai_mafia_internal]
+
+  mcp_server2:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    environment:
+      BACKEND_API_URL: http://backend:8000
+      MCP_LISTEN_HOST: 0.0.0.0
+      MCP_LISTEN_PORT: "8100"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [ai_mafia_internal]
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  ai_mafia_internal:
+    # 포트를 publish하지 않은 서비스는 이 네트워크에 있어도 호스트에서 직접 접근할 수 없다.
+    # Frontend의 브라우저 SSE가 host gateway를 통해 공개 Backend 주소를 호출해야 하므로
+    # Docker의 external egress 자체를 막는 internal: true는 사용하지 않는다.

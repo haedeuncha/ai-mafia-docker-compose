@@ -1,0 +1,17 @@
+# 실제 환경 값과 실행 산출물은 공개 저장소에 포함하지 않는다.
+.env
+.env.*
+!.env.example
+
+# Python 및 Docker 실행 중 생성되는 파일은 재현 가능한 소스가 아니다.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+backend/logs/
+
+# 운영 DB·Redis 데이터는 Docker named volume으로 관리하며 Git에 저장하지 않는다.
+postgres_data/
+redis_data/

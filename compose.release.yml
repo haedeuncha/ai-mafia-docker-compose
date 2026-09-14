@@ -1,0 +1,14 @@
+# release 파일은 개발 bind mount·reload 없이 compose.yml의 같은 포트와 서비스
+# 경계를 사용한다. Compose는 두 파일을 병합해 이미지 빌드와 기동 순서를 유지한다.
+services:
+  backend:
+    restart: unless-stopped
+
+  frontend:
+    restart: unless-stopped
+
+  mcp_server1:
+    restart: unless-stopped
+
+  mcp_server2:
+    restart: unless-stopped

@@ -1,0 +1,11 @@
+# FastMCP package는 별도 build backend를 선언하지 않으므로, pyproject의 고정 범위를
+# 그대로 설치한 뒤 소스를 복사한다. MCP는 DB·Redis에 직접 접근하지 않는다.
+FROM python:3.12-slim
+
+WORKDIR /app/mcp_server
+
+RUN pip install --no-cache-dir "httpx>=0.28.0,<1" "mcp==1.29.1" "uvicorn>=0.35.0,<1"
+
+COPY mcp_server /app/mcp_server
+
+CMD ["python", "-m", "mafia_game"]
