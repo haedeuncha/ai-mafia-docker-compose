@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from datetime import datetime, timedelta
 from html import escape
@@ -18,6 +19,7 @@ from frontend_user.components.action_panel import (
     _countdown_remaining_ms, maintain_speech_queue, prefer_current_snapshot, speech_queue_busy,
 )
 from frontend_user.components.sync_bridge import apply_sync, mount_sse
+from frontend_user.core.api_client import BackendApiConfig
 from frontend_user.components.theme import render_application_header, render_header_back_button
 from frontend_user.core.api_client import ApiResponseError, ApiUnavailableError
 from frontend_user.core.scenario_images import scenario_image_path
@@ -389,6 +391,19 @@ def render(snapshot: dict[str, Any]) -> None:
         _render_bottom_agent_activity(snapshot=snapshot)
 
 
+def _browser_backend_url(client: Any) -> str:
+    """브라우저 SSE가 접근할 Backend 주소를 별도 검증해 반환한다.
+
+    Streamlit Python 프로세스는 Docker 내부 hostname을 사용하지만, component의
+    fetch는 사용자의 브라우저에서 실행된다. 두 실행 위치의 DNS 범위가 달라
+    `BROWSER_BACKEND_API_URL`을 분리하며, 같은 allowlist 검증을 다시 적용해
+    환경 변수로 임의 endpoint를 주입할 수 없게 한다.
+    """
+
+    configured = os.getenv("BROWSER_BACKEND_API_URL", client.config.api_url)
+    return BackendApiConfig(api_url=configured).api_url
+
+
 def _sync_snapshot(*, client: Any, snapshot: dict[str, Any]) -> dict[str, Any]:
     """읽기 fragment에서만 sync를 적용하고 필요한 GET을 한 번 수행한다."""
 
@@ -396,7 +411,7 @@ def _sync_snapshot(*, client: Any, snapshot: dict[str, Any]) -> dict[str, Any]:
     game_id = game.get("game_id")
     reserved = speech_queue_busy(game_id)
     envelope = mount_sse(
-        backend_url=client.config.api_url,
+        backend_url=_browser_backend_url(client),
         game_id=str(game.get("game_id")),
         user_id=client.user_id,
         last_sequence=int(game.get("last_sequence", 0)),

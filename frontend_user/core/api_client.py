@@ -49,7 +49,12 @@ class BackendApiConfig:
             port = parsed.port
         except ValueError as exc:
             raise ApiClientConfigurationError("Backend API URL이 올바르지 않습니다.") from exc
-        local_http = parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1", "::1"}
+        # Docker Desktop의 host gateway와 Compose 내부 service name만 추가 허용한다.
+        # 임의 사설망 host를 허용하면 브라우저가 사용자 UUID를 공격자 endpoint로
+        # 보내게 될 수 있으므로 Docker가 고정으로 제공하는 이름만 쓴다.
+        local_http = parsed.scheme == "http" and parsed.hostname in {
+            "localhost", "127.0.0.1", "::1", "host.docker.internal", "backend",
+        }
         if (not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment
                 or parsed.path not in {"", "/"} or (parsed.scheme != "https" and not local_http)
                 or (port is not None and not 1 <= port <= 65_535)):

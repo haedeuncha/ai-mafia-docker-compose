@@ -219,7 +219,12 @@ class MinimalBackendContextClient:
             raise ValueError("BACKEND_API_URL must be an absolute HTTP(S) URL")
         if parsed.query or parsed.fragment or parsed.username or parsed.password:
             raise ValueError("BACKEND_API_URL must not include query, fragment, or userinfo")
-        if parsed.scheme == "http" and parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
+        # Docker Compose 내부 통신은 외부 DNS가 아닌 고정 service name `backend`만
+        # 사용한다. 이 예외를 임의 hostname으로 넓히면 MCP가 비공개 game context를
+        # 외부 HTTP endpoint에 전달할 수 있으므로 정확한 이름만 허용한다.
+        if parsed.scheme == "http" and parsed.hostname not in {
+            "127.0.0.1", "localhost", "::1", "backend",
+        }:
             raise ValueError("plain HTTP is allowed only for loopback development")
         self._base_url = backend_api_url.rstrip("/")
         self._client = client or httpx.AsyncClient(timeout=10.0, trust_env=False)
