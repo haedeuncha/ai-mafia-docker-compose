@@ -138,3 +138,19 @@ docker compose --env-file .env -f compose.yml -f compose.release.yml up --build 
 ```powershell
 docker compose --env-file .env -f compose.yml -f compose.release.yml config --quiet
 ```
+
+## GitHub Actions CI
+
+`.github/workflows/ci.yml`은 pull request, 브랜치 push, Actions 화면의 **Run workflow**에서
+실행됩니다. CI는 Python 3.12에서 Backend와 사용자 Front의 자동 테스트, Ruff 정적 검사,
+Docker Compose 설정 검사와 Docker 이미지 빌드를 수행합니다. 게임 서버·DB·Redis 컨테이너를
+시작하지 않으므로 GitHub에 게임 데이터나 실제 API key를 전송하지 않습니다.
+
+Backend Agent 보고서 시험은 로컬에서 전체 반복을 실행하는 대신, CI에서는 합성 표본 1회로
+경로와 회귀 여부만 빠르게 확인합니다. 전체 반복 검증은 개발 환경에서 필요할 때 실행합니다.
+
+```powershell
+# GitHub에 push한 뒤: 저장소 → Actions → CI → Run workflow
+# 로컬에서 CI의 Docker 구성 확인만 할 때
+docker compose --env-file .env.example -f compose.yml -f compose.release.yml config --quiet
+```

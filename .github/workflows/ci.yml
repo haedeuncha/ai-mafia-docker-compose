@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# CI는 저장소 내용을 읽고 검증만 한다. 배포·패키지 게시 권한은 부여하지 않는다.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Python and Docker verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 저장소 코드 가져오기
+        uses: actions/checkout@v4
+
+      - name: Python 3.12 준비
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Backend와 사용자 Front 의존성 설치
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements.txt
+          python -m pip install -r frontend_user/requirements.txt -r frontend_user/requirements-dev.txt
+          python -m pip install "ruff>=0.16.0,<1"
+
+      - name: Backend 합성 회귀 테스트
+        env:
+          # 보고서용 반복 시험의 전체 50회 실행은 로컬 검증에 남기고, CI에서는 경로만 빠르게 확인한다.
+          AGENT_REPORT_SAMPLES: '1'
+          PYTHONPATH: .
+        run: python -m pytest backend/tests -q --tb=short
+
+      - name: 사용자 Front 회귀 테스트
+        run: python -m pytest frontend_user/tests -c frontend_user/pytest.ini -q --tb=short
+
+      - name: Python 정적 검사
+        run: |
+          python -m ruff check backend frontend_user
+          python -m ruff check mcp_server/mafia_game
+
+      - name: Docker Compose 구성 검증
+        run: docker compose --env-file .env.example -f compose.yml -f compose.release.yml config --quiet
+
+      - name: Docker 이미지 빌드
+        run: docker compose --env-file .env.example -f compose.yml -f compose.release.yml build
